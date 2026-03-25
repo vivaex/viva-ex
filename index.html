@@ -3,142 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viva EX - منصة الصم الذكية</title>
+    <title>Viva EX - التفاعل الصوتي</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        :root {
-            --bg-color: #f0f2f5;
-            --card-bg: #ffffff;
-            --text-primary: #1a73e8;
-            --text-secondary: #5f6368;
-            --border-color: #1a73e8;
-        }
-
-        [data-theme="dark"] {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-primary: #8ab4f8;
-            --text-secondary: #bdc1c6;
-            --border-color: #8ab4f8;
-        }
-
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: var(--bg-color); 
-            transition: 0.3s;
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            min-height: 100vh; 
-            margin: 0; 
-        }
-
-        .toolbar {
-            position: fixed;
-            top: 20px;
-            display: flex;
-            gap: 10px;
-        }
-
-        button.tool-btn {
-            background: var(--card-bg);
-            border: 1px solid var(--text-primary);
-            color: var(--text-primary);
-            padding: 8px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .card {
-            background: var(--card-bg);
-            padding: 2.5rem;
-            border-radius: 24px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
-            text-align: center;
-            width: 90%;
-            max-width: 500px;
-            transition: 0.3s;
-        }
-
-        h1 { color: var(--text-primary); font-size: 2.5rem; margin-bottom: 5px; }
-        p { color: var(--text-secondary); font-size: 1.1rem; }
-
-        .upload-box {
-            border: 2px dashed var(--border-color);
-            border-radius: 20px;
-            padding: 40px;
-            margin-top: 25px;
-            cursor: pointer;
-            transition: 0.3s;
-            position: relative;
-        }
-
-        .upload-box:hover { background-color: rgba(26, 115, 232, 0.1); }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; --text: #202124; }
+        [data-theme="dark"] { --primary: #8ab4f8; --bg: #121212; --card: #1e1e1e; --text: #e8eaed; }
         
-        #file-name { 
-            margin-top: 20px; 
-            font-weight: bold; 
-            color: #34a853; 
-            min-height: 24px;
-        }
-
-        .footer-note {
-            margin-top: 30px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; text-align: center; padding: 20px; }
+        .card { background: var(--card); max-width: 600px; margin: auto; padding: 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .btn { border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; background: var(--primary); color: white; transition: 0.2s; }
+        .btn:hover { opacity: 0.8; }
+        .btn-voice { background: #ea4335; } /* لون أحمر للتسجيل */
+        .content-area { margin-top: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 10px; min-height: 100px; text-align: right; overflow-y: auto; max-height: 200px; }
+        .status { font-size: 0.9rem; color: #34a853; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="toolbar">
-        <button class="tool-btn" onclick="toggleTheme()">تبديل الوضع 🌓</button>
-        <button class="tool-btn" onclick="changeFontSize(2)">خط أكبر +</button>
-        <button class="tool-btn" onclick="changeFontSize(-2)">خط أصغر -</button>
+    <div class="controls">
+        <button class="btn" onclick="toggleTheme()">🌓 وضع ليلي</button>
+        <button class="btn" onclick="document.getElementById('file-input').click()">📁 ارفع PDF</button>
+        <input type="file" id="file-input" accept=".pdf" hidden>
     </div>
 
-    <div class="card" id="mainCard">
-        <h1>Viva EX</h1>
-        <p id="description">منصتك الذكية لترجمة ومعالجة ملفات الصم</p>
+    <div class="card">
+        <h1>Viva EX Voice</h1>
+        <p>تحكم بالملف عبر صوتك واسمعه ينطق</p>
+
+        <div class="content-area" id="pdf-text">سيظهر نص الـ PDF هنا بعد الرفع...</div>
         
-        <div class="upload-box" onclick="document.getElementById('file-input').click()">
-            <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" width="60" alt="pdf icon">
-            <p>اسحب ملف الـ PDF هنا أو اضغط للاختيار</p>
-            <input type="file" id="file-input" accept=".pdf" hidden>
+        <div class="controls" style="margin-top: 20px;">
+            <button class="btn" onclick="speakText()">🔊 اقرأ لي الملف</button>
+            <button class="btn btn-voice" id="start-record">🎤 ابدأ التحدث (الإجابة)</button>
         </div>
-        
-        <div id="file-name"></div>
-        
-        <div class="footer-note">مشروع Viva EX لدعم لغة الإشارة والتواصل البصري</div>
+
+        <div id="status" class="status"></div>
+        <div id="user-answer" style="margin-top: 15px; font-style: italic; color: #1a73e8;"></div>
     </div>
 
     <script>
-        // تغيير الوضع (ليلي/نهاري)
-        function toggleTheme() {
-            const body = document.body;
-            const currentTheme = body.getAttribute('data-theme');
-            body.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
-        }
+        // إعداد مكتبة PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
-        // تغيير حجم الخط للمحتوى
-        let currentSize = 1.1;
-        function changeFontSize(delta) {
-            const desc = document.getElementById('description');
-            const style = window.getComputedStyle(desc).getPropertyValue('font-size');
-            const fontSize = parseFloat(style);
-            desc.style.fontSize = (fontSize + delta) + 'px';
-        }
+        let extractedText = "";
 
-        // إظهار اسم الملف المرفوع
-        const input = document.getElementById('file-input');
-        const nameDisplay = document.getElementById('file-name');
+        // 1. استخراج النص من الـ PDF
+        document.getElementById('file-input').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-        input.onchange = () => {
-            if (input.files.length > 0) {
-                nameDisplay.innerText = "✅ تم تحميل: " + input.files[0].name;
-            }
+            document.getElementById('status').innerText = "جاري قراءة الملف...";
+            const reader = new FileReader();
+            reader.onload = async function() {
+                const typedarray = new Uint8Array(this.result);
+                const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                let fullText = "";
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    fullText += textContent.items.map(item => item.str).join(" ") + "\n";
+                }
+                
+                extractedText = fullText;
+                document.getElementById('pdf-text').innerText = extractedText || "لا يوجد نص قابل للقراءة في هذا الملف.";
+                document.getElementById('status').innerText = "تم استخراج النص بنجاح ✅";
+            };
+            reader.readAsArrayBuffer(file);
         };
+
+        // 2. ميزة قراءة النص (Text-to-Speech)
+        function speakText() {
+            if (!extractedText) {
+                alert("يرجى رفع ملف أولاً!");
+                return;
+            }
+            const utterance = new SpeechSynthesisUtterance(extractedText);
+            utterance.lang = 'ar-SA'; // لغة عربية
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 3. ميزة التعرف على الصوت (Speech-to-Text)
+        const recordBtn = document.getElementById('start-record');
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'ar-SA';
+
+        recordBtn.onclick = () => {
+            recognition.start();
+            document.getElementById('status').innerText = "جاري الاستماع إليك... تكلّم الآن";
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById('user-answer').innerText = "إجابتك المسجلة: " + transcript;
+            document.getElementById('status').innerText = "تم استلام الصوت بنجاح ✅";
+        };
+
+        function toggleTheme() {
+            document.body.setAttribute('data-theme', document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        }
     </script>
 </body>
 </html>
