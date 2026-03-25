@@ -3,37 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viva EX - استجابة فورية</title>
+    <title>Viva EX - نسخة نظيفة</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; --stop: #ea4335; }
-        [data-theme="dark"] { --primary: #8ab4f8; --bg: #121212; --card: #1e1e1e; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #333; text-align: center; padding: 20px; transition: 0.3s; }
-        .card { background: var(--card); max-width: 800px; margin: 20px auto; padding: 40px; border-radius: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-        .mic-indicator { width: 60px; height: 60px; border-radius: 50%; background: #34a853; margin: 20px auto; display: flex; align-items: center; justify-content: center; color: white; transition: 0.3s; }
-        .speaking { background: #fbbc05; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-        .content-box { font-size: 1.6rem; padding: 30px; border-radius: 20px; background: rgba(26, 115, 232, 0.05); margin: 25px 0; border: 1px solid #ddd; }
-        .command-hint { font-size: 0.85rem; color: #666; font-weight: bold; }
-        button#start-btn { padding: 15px 40px; border-radius: 50px; border: none; background: var(--primary); color: white; font-size: 1.1rem; cursor: pointer; }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); text-align: center; padding: 20px; direction: rtl; }
+        .card { background: var(--card); max-width: 800px; margin: auto; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .question-number { background: #5f6368; color: white; padding: 5px 15px; border-radius: 50px; font-weight: bold; }
+        .active-q { background: var(--primary) !important; }
+        .content-box { font-size: 1.7rem; padding: 30px; margin: 20px 0; background: #e8f0fe; border-radius: 15px; min-height: 100px; border: 2px solid transparent; }
+        .listening-mode { border-color: #34a853; background: #e6f4ea; }
+        .status { color: #1a73e8; font-weight: bold; margin-bottom: 10px; height: 25px; }
+        .btn-main { padding: 15px 40px; border-radius: 50px; border: none; background: var(--primary); color: white; cursor: pointer; font-size: 1.1rem; }
+        .log-item { background: #fff; padding: 15px; margin-bottom: 10px; border-right: 5px solid #34a853; text-align: right; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h1>Viva EX Voice Instant</h1>
-        <p>نظام التحكم اللحظي - قل "وقف" في أي وقت</p>
+        <h1>Viva EX - نظام الإجابة الصافي</h1>
+        <div id="status" class="status">يرجى رفع ملف الـ PDF</div>
 
         <input type="file" id="file-input" accept=".pdf" style="display:none">
-        <button id="start-btn">📁 ارفع الملف وابدأ التحكم</button>
+        <button id="start-btn" class="btn-main">📁 ارفع الملف وابدأ</button>
 
-        <div id="mic" class="mic-indicator" style="display:none">🎤</div>
-        
-        <div id="status" style="margin: 15px 0; font-weight: bold; color: var(--primary);">بانتظار رفع الـ PDF...</div>
+        <div id="ui-elements" style="display:none">
+            <span id="q-tag" class="question-number">سؤال رقم: <span id="q-num">1</span></span>
+            <div class="content-box" id="display-text">المحتوى سيظهر هنا</div>
+            <p style="font-size: 0.9rem; color: #666;">الأوامر الصوتية: [ اقرأ - التالي - ارجع - وقف - احفظ ]</p>
+        </div>
 
-        <div class="content-box" id="display-text">المحتوى سيظهر هنا</div>
-
-        <div class="command-hint">الأوامر السريعة: [ اقرأ ] - [ التالي ] - [ ارجع ] - [ **وقف** ] - [ احفظ ]</div>
+        <div id="log-section" style="display:none; margin-top: 30px; border-top: 2px solid #ddd; padding-top: 20px;">
+            <h3>سجل الإجابات (سؤال وجواب):</h3>
+            <div id="log-container"></div>
+        </div>
     </div>
 
     <script>
@@ -41,24 +44,25 @@
         
         let segments = [];
         let index = 0;
-        let answers = [];
+        let results = []; 
+        let isSystemSpeaking = false; // متغير مهم لمنع تسجيل صوت النظام
+
         const synth = window.speechSynthesis;
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
 
         recognition.lang = 'ar-SA';
         recognition.continuous = true;
-        recognition.interimResults = true; // تفعيل النتائج المؤقتة لسرعة الاستجابة
+        recognition.interimResults = true;
 
         document.getElementById('start-btn').onclick = () => document.getElementById('file-input').click();
 
         document.getElementById('file-input').onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
             document.getElementById('start-btn').style.display = 'none';
-            document.getElementById('mic').style.display = 'flex';
-            document.getElementById('status').innerText = "جاري المعالجة...";
-
+            document.getElementById('ui-elements').style.display = 'block';
+            document.getElementById('log-section').style.display = 'block';
+            
             const reader = new FileReader();
             reader.onload = async function() {
                 const pdf = await pdfjsLib.getDocument(new Uint8Array(this.result)).promise;
@@ -68,26 +72,36 @@
                     const content = await page.getTextContent();
                     fullText += content.items.map(item => item.str).join(" ") + " ";
                 }
-                segments = fullText.split(/[.؟?]/).filter(s => s.trim().length > 3);
-                
-                document.getElementById('status').innerText = "النظام مستعد تماماً ⚡";
+                segments = fullText.split(/[.؟?]/).filter(s => s.trim().length > 5);
                 updateUI();
                 recognition.start();
-                announce("تم التحميل. قل اقرأ للبدء.");
+                document.getElementById('status').innerText = "النظام جاهز للاستماع";
             };
             reader.readAsArrayBuffer(file);
         };
 
         function updateUI() {
+            document.getElementById('q-num').innerText = index + 1;
             document.getElementById('display-text').innerText = segments[index] || "نهاية الملف";
         }
 
-        function announce(text) {
-            synth.cancel(); // إلغاء أي صوت سابق
+        function speak(text) {
+            synth.cancel();
             const utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'ar-SA';
-            utter.onstart = () => document.getElementById('mic').classList.add('speaking');
-            utter.onend = () => document.getElementById('mic').classList.remove('speaking');
+            
+            utter.onstart = () => {
+                isSystemSpeaking = true; // النظام بدأ يتكلم
+                document.getElementById('status').innerText = "النظام يقرأ الآن... 🔊";
+                document.getElementById('display-text').classList.remove('listening-mode');
+            };
+
+            utter.onend = () => {
+                isSystemSpeaking = false; // النظام سكت، الآن نسمع الطالب
+                document.getElementById('status').innerText = "انتهيت.. أنا أسمع إجابتك الآن 🎤";
+                document.getElementById('display-text').classList.add('listening-mode');
+            };
+
             synth.speak(utter);
         }
 
@@ -96,58 +110,76 @@
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 transcript += event.results[i][0].transcript;
             }
-            
-            console.log("السمع الحالي:", transcript);
 
-            // أمر التوقف اللحظي (Priority One)
-            if (transcript.includes("وقف") || transcript.includes("اسكت") || transcript.includes("خلاص")) {
+            // ميزة التوقف الفوري (تعمل حتى لو كان النظام يتكلم)
+            if (transcript.includes("وقف") || transcript.includes("اسكت")) {
                 synth.cancel();
-                document.getElementById('status').innerText = "تم الإيقاف فوراً 🛑";
+                isSystemSpeaking = false;
                 return;
             }
 
-            // معالجة الأوامر فقط عند اكتمال الجملة (isFinal) لضمان الدقة
+            // إذا كان النظام يتكلم، نتجاهل أي شيء آخر (عشان ما يسجل صوته كإجابة)
+            if (isSystemSpeaking) return;
+
+            // معالجة الأوامر والإجابات فقط بعد انتهاء الطالب من الكلام (isFinal)
             if (event.results[event.results.length - 1].isFinal) {
-                const command = transcript.trim();
+                const cleanText = transcript.trim();
                 
-                if (command.includes("اقرأ")) {
-                    announce(segments[index]);
+                if (cleanText.includes("اقرأ")) {
+                    speak(segments[index]);
                 } 
-                else if (command.includes("التالي") || command.includes("بعده")) {
+                else if (cleanText.includes("التالي") || cleanText.includes("بعده")) {
                     if (index < segments.length - 1) {
                         index++;
                         updateUI();
-                        announce(segments[index]);
+                        speak(segments[index]);
                     }
                 } 
-                else if (command.includes("ارجع") || command.includes("قبل")) {
+                else if (cleanText.includes("ارجع") || cleanText.includes("قبل")) {
                     if (index > 0) {
                         index--;
                         updateUI();
-                        announce(segments[index]);
+                        speak(segments[index]);
                     }
                 }
-                else if (command.includes("احفظ")) {
-                    download();
+                else if (cleanText.includes("احفظ")) {
+                    downloadFile();
                 }
-                else {
-                    // تسجيل إجابة تلقائية
-                    answers.push(`س: ${segments[index]} | ج: ${command}`);
-                    document.getElementById('status').innerText = "سجلت إجابتك: " + command;
+                else if (cleanText.length > 2) {
+                    // تسجيل الإجابة (هنا نضمن أنها صوت الطالب فقط)
+                    saveAnswer(cleanText);
                 }
             }
         };
 
-        recognition.onerror = () => recognition.start();
-        recognition.onend = () => recognition.start();
+        function saveAnswer(text) {
+            const qText = segments[index];
+            const qNum = index + 1;
 
-        function download() {
-            const blob = new Blob([answers.join("\n")], { type: 'text/plain' });
+            results.push({ n: qNum, q: qText, a: text });
+
+            const container = document.getElementById('log-container');
+            const div = document.createElement('div');
+            div.className = 'log-item';
+            div.innerHTML = `<b>سؤال (${qNum}):</b> ${qText}<br><b>الإجابة:</b> <span style="color:green">${text}</span>`;
+            container.prepend(div);
+            
+            document.getElementById('status').innerText = "تم تسجيل إجابة السؤال " + qNum;
+        }
+
+        function downloadFile() {
+            let content = "تقرير إجابات الطالب - Viva EX\n\n";
+            results.forEach(r => {
+                content += `السؤال ${r.n}: ${r.q}\nإجابة الطالب: ${r.a}\n------------------\n`;
+            });
+            const blob = new Blob([content], { type: 'text/plain' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = "viva_ex_report.txt";
+            a.download = "viva_report.txt";
             a.click();
         }
+
+        recognition.onend = () => recognition.start();
     </script>
 </body>
 </html>
