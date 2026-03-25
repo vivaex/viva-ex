@@ -3,102 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viva EX - التفاعل الصوتي</title>
+    <title>Viva EX - التفاعل الذكي</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; --text: #202124; }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; --text: #202124; --accent: #ea4335; }
         [data-theme="dark"] { --primary: #8ab4f8; --bg: #121212; --card: #1e1e1e; --text: #e8eaed; }
         
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; text-align: center; padding: 20px; }
-        .card { background: var(--card); max-width: 600px; margin: auto; padding: 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; text-align: center; padding: 20px; margin: 0; }
+        .card { background: var(--card); max-width: 700px; margin: 20px auto; padding: 30px; border-radius: 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
         .controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .btn { border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; background: var(--primary); color: white; transition: 0.2s; }
-        .btn:hover { opacity: 0.8; }
-        .btn-voice { background: #ea4335; } /* لون أحمر للتسجيل */
-        .content-area { margin-top: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 10px; min-height: 100px; text-align: right; overflow-y: auto; max-height: 200px; }
-        .status { font-size: 0.9rem; color: #34a853; margin-top: 5px; }
+        .btn { border: none; padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: bold; background: var(--primary); color: white; transition: 0.2s; font-size: 1rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .btn-stop { background: var(--accent); }
+        .btn-voice { background: #34a853; }
+        
+        .content-area { margin-top: 20px; border: 2px solid #eee; padding: 20px; border-radius: 15px; min-height: 120px; text-align: right; overflow-y: auto; max-height: 250px; line-height: 1.6; }
+        .answers-section { margin-top: 30px; text-align: right; }
+        .answer-item { background: #e8f0fe; padding: 10px 15px; border-radius: 10px; margin-bottom: 10px; border-right: 5px solid var(--primary); animation: slideIn 0.3s ease; }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .status { font-size: 0.9rem; color: #1a73e8; margin: 10px 0; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="controls">
-        <button class="btn" onclick="toggleTheme()">🌓 وضع ليلي</button>
-        <button class="btn" onclick="document.getElementById('file-input').click()">📁 ارفع PDF</button>
-        <input type="file" id="file-input" accept=".pdf" hidden>
-    </div>
-
     <div class="card">
-        <h1>Viva EX Voice</h1>
-        <p>تحكم بالملف عبر صوتك واسمعه ينطق</p>
+        <h1>Viva EX Voice Control</h1>
+        <p>تحكم بالقراءة، أوقف الصوت، وسجل إجاباتك</p>
 
-        <div class="content-area" id="pdf-text">سيظهر نص الـ PDF هنا بعد الرفع...</div>
-        
-        <div class="controls" style="margin-top: 20px;">
-            <button class="btn" onclick="speakText()">🔊 اقرأ لي الملف</button>
-            <button class="btn btn-voice" id="start-record">🎤 ابدأ التحدث (الإجابة)</button>
+        <div class="controls">
+            <button class="btn" onclick="document.getElementById('file-input').click()">📁 ارفع ملف PDF</button>
+            <input type="file" id="file-input" accept=".pdf" hidden>
+            <button class="btn" onclick="toggleTheme()">🌓 النمط</button>
         </div>
 
+        <div class="content-area" id="pdf-text">بانتظار رفع الملف...</div>
+        
         <div id="status" class="status"></div>
-        <div id="user-answer" style="margin-top: 15px; font-style: italic; color: #1a73e8;"></div>
+
+        <div class="controls" style="margin-top: 20px;">
+            <button class="btn" onclick="speakText()">🔊 بدء القراءة</button>
+            <button class="btn btn-stop" onclick="stopSpeaking()">🛑 إيقاف مؤقت</button>
+            <button class="btn btn-voice" id="start-record">🎤 تسجيل إجابة</button>
+        </div>
+
+        <div class="answers-section">
+            <h3>إجاباتك المسجلة:</h3>
+            <div id="answers-list">
+                </div>
+        </div>
     </div>
 
     <script>
-        // إعداد مكتبة PDF.js
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-
         let extractedText = "";
+        let synth = window.speechSynthesis;
 
-        // 1. استخراج النص من الـ PDF
+        // 1. استخراج النص
         document.getElementById('file-input').onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
-            document.getElementById('status').innerText = "جاري قراءة الملف...";
+            document.getElementById('status').innerText = "جاري استخراج النص...";
             const reader = new FileReader();
             reader.onload = async function() {
                 const typedarray = new Uint8Array(this.result);
                 const pdf = await pdfjsLib.getDocument(typedarray).promise;
                 let fullText = "";
-                
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
-                    fullText += textContent.items.map(item => item.str).join(" ") + "\n";
+                    fullText += textContent.items.map(item => item.str).join(" ") + " ";
                 }
-                
                 extractedText = fullText;
-                document.getElementById('pdf-text').innerText = extractedText || "لا يوجد نص قابل للقراءة في هذا الملف.";
-                document.getElementById('status').innerText = "تم استخراج النص بنجاح ✅";
+                document.getElementById('pdf-text').innerText = extractedText;
+                document.getElementById('status').innerText = "تم التحميل بنجاح ✅";
             };
             reader.readAsArrayBuffer(file);
         };
 
-        // 2. ميزة قراءة النص (Text-to-Speech)
+        // 2. القراءة الصوتية
         function speakText() {
-            if (!extractedText) {
-                alert("يرجى رفع ملف أولاً!");
-                return;
-            }
+            if (!extractedText) return alert("ارفع ملف أولاً!");
+            stopSpeaking(); // تنظيف أي صوت شغال
             const utterance = new SpeechSynthesisUtterance(extractedText);
-            utterance.lang = 'ar-SA'; // لغة عربية
-            window.speechSynthesis.speak(utterance);
+            utterance.lang = 'ar-SA';
+            synth.speak(utterance);
+            document.getElementById('status').innerText = "جاري القراءة الآن... 🔊";
         }
 
-        // 3. ميزة التعرف على الصوت (Speech-to-Text)
+        // 3. زر الإيقاف (طلبك الأساسي)
+        function stopSpeaking() {
+            if (synth.speaking) {
+                synth.cancel();
+                document.getElementById('status').innerText = "تم إيقاف القراءة 🛑";
+            }
+        }
+
+        // 4. تسجيل الإجابة الصوتية وإضافتها للقائمة
         const recordBtn = document.getElementById('start-record');
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = 'ar-SA';
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ar-SA';
 
-        recordBtn.onclick = () => {
-            recognition.start();
-            document.getElementById('status').innerText = "جاري الاستماع إليك... تكلّم الآن";
-        };
+            recordBtn.onclick = () => {
+                stopSpeaking(); // نوقف القراءة تلقائياً لما يبدأ يسجل
+                recognition.start();
+                document.getElementById('status').innerText = "أنا أسمعك الآن... تكلّم";
+            };
 
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            document.getElementById('user-answer').innerText = "إجابتك المسجلة: " + transcript;
-            document.getElementById('status').innerText = "تم استلام الصوت بنجاح ✅";
-        };
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                addAnswerToList(transcript);
+                document.getElementById('status').innerText = "تم تسجيل إجابتك ✅";
+            };
+        }
+
+        function addAnswerToList(text) {
+            const list = document.getElementById('answers-list');
+            const newAnswer = document.createElement('div');
+            newAnswer.className = 'answer-item';
+            newAnswer.innerText = text;
+            list.prepend(newAnswer); // يضيف الإجابة الجديدة في البداية
+        }
 
         function toggleTheme() {
             document.body.setAttribute('data-theme', document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
