@@ -3,150 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viva EX - الحفظ الذكي</title>
+    <title>Viva EX - Hands Free</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; --text: #202124; --stop: #ea4335; --record: #34a853; --save: #fbbc04; }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; --text: #202124; }
         [data-theme="dark"] { --primary: #8ab4f8; --bg: #121212; --card: #1e1e1e; --text: #e8eaed; }
-        
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; text-align: center; padding: 20px; margin: 0; }
-        .card { background: var(--card); max-width: 700px; margin: 20px auto; padding: 30px; border-radius: 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
-        .controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .btn { border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: bold; background: var(--primary); color: white; transition: 0.2s; }
-        .btn:hover { opacity: 0.9; transform: scale(1.02); }
-        .btn-stop { background: var(--stop); }
-        .btn-record { background: var(--record); }
-        .btn-save { background: var(--save); color: #000; }
-        
-        .content-area { margin-top: 20px; border: 2px solid #eee; padding: 20px; border-radius: 15px; min-height: 120px; text-align: right; overflow-y: auto; max-height: 250px; line-height: 1.6; }
-        .answers-section { margin-top: 30px; text-align: right; }
-        .answer-item { background: rgba(26, 115, 232, 0.1); padding: 12px; border-radius: 10px; margin-bottom: 10px; border-right: 5px solid var(--primary); font-weight: 500; }
-        .status { font-size: 0.95rem; color: var(--primary); margin: 15px 0; font-weight: bold; min-height: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); text-align: center; padding: 20px; margin: 0; transition: 0.3s; }
+        .card { background: var(--card); max-width: 800px; margin: 20px auto; padding: 40px; border-radius: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 2px solid var(--primary); }
+        .mic-status { width: 80px; height: 80px; border-radius: 50%; background: #ea4335; margin: 20px auto; display: flex; align-items: center; justify-content: center; color: white; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(234, 67, 53, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); } }
+        .listening { background: #34a853 !important; }
+        .content-box { font-size: 1.5rem; padding: 25px; border-radius: 15px; background: rgba(26, 115, 232, 0.1); margin: 20px 0; min-height: 100px; line-height: 1.8; }
+        .help-box { font-size: 0.9rem; opacity: 0.8; background: #eee; padding: 10px; border-radius: 10px; color: #333; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h1>Viva EX System</h1>
-        <p>مشروع دعم الصم - قراءة وتوثيق صوتي</p>
+        <h1>Viva EX AI</h1>
+        <p>ارفع الملف مرة واحدة.. ثم تحكم بصوتك فقط</p>
 
-        <div class="controls">
-            <button class="btn" onclick="document.getElementById('file-input').click()">📁 ارفع ملف PDF</button>
-            <input type="file" id="file-input" accept=".pdf" hidden>
-            <button class="btn" onclick="toggleTheme()">🌓 النمط</button>
-        </div>
+        <input type="file" id="file-input" accept=".pdf" class="hidden">
+        <button id="upload-btn" style="padding: 15px 30px; border-radius: 50px; border: none; background: var(--primary); color: white; font-weight: bold; cursor: pointer;">📁 اضغط هنا لرفع الملف والبدء</button>
 
-        <div class="content-area" id="pdf-text">بانتظار الملف...</div>
-        <div id="status" class="status"></div>
+        <div id="mic-indicator" class="mic-status hidden">🎤</div>
+        
+        <div id="status" style="font-weight: bold; margin: 15px 0;">بانتظار الملف...</div>
 
-        <div class="controls">
-            <button class="btn" onclick="speakText()">🔊 بدء القراءة</button>
-            <button class="btn btn-stop" onclick="stopSpeaking()">🛑 إيقاف القراءة</button>
-        </div>
+        <div class="content-box" id="display-text">المحتوى سيظهر هنا</div>
 
-        <div class="controls" style="background: rgba(0,0,0,0.05); padding: 15px; border-radius: 15px;">
-            <button class="btn btn-record" id="start-btn">🎤 بدء تسجيل</button>
-            <button class="btn btn-stop" id="stop-btn" disabled>⏹️ إيقاف تسجيل</button>
-            <button class="btn btn-save" onclick="downloadAnswers()">💾 حفظ الإجابات</button>
-        </div>
-
-        <div class="answers-section">
-            <h3>الإجابات المحفوظة:</h3>
-            <div id="answers-list"></div>
+        <div class="help-box">
+            الأوامر الصوتية المتاحة: 
+            <b>[ اقرأ ] - [ التالي ] - [ ارجع ] - [ وقف ] - [ احفظ ]</b>
+            <br> (أي كلام آخر سيسجل كإجابة للسؤال الحالي)
         </div>
     </div>
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-        let extractedText = "";
-        let answersArray = []; // مصفوفة لتخزين الإجابات
-        let synth = window.speechSynthesis;
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition;
+        
+        let segments = [];
+        let index = 0;
+        let finalAnswers = [];
+        let isSpeaking = false;
 
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'ar-SA';
-            recognition.continuous = true;
+        const synth = window.speechSynthesis;
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        
+        recognition.lang = 'ar-SA';
+        recognition.continuous = true;
+        recognition.interimResults = false;
 
-            recognition.onresult = (event) => {
-                const transcript = event.results[event.results.length - 1][0].transcript;
-                addAnswerToList(transcript);
-            };
-        }
+        // بدء العملية
+        document.getElementById('upload-btn').onclick = () => document.getElementById('file-input').click();
 
-        // استخراج النص
         document.getElementById('file-input').onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            document.getElementById('status').innerText = "جاري المعالجة...";
+
+            document.getElementById('upload-btn').classList.add('hidden');
+            document.getElementById('mic-indicator').classList.remove('hidden');
+            document.getElementById('status').innerText = "جاري معالجة الملف...";
+
             const reader = new FileReader();
             reader.onload = async function() {
-                const typedarray = new Uint8Array(this.result);
-                const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                const pdf = await pdfjsLib.getDocument(new Uint8Array(this.result)).promise;
                 let fullText = "";
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    fullText += textContent.items.map(item => item.str).join(" ") + " ";
+                    const content = await page.getTextContent();
+                    fullText += content.items.map(item => item.str).join(" ") + " ";
                 }
-                extractedText = fullText;
-                document.getElementById('pdf-text').innerText = extractedText;
-                document.getElementById('status').innerText = "جاهز ✅";
+                segments = fullText.split(/[.؟?]/).filter(s => s.trim().length > 3);
+                
+                document.getElementById('status').innerText = "تم التجهيز! أنا أسمعك الآن...";
+                document.getElementById('mic-indicator').classList.add('listening');
+                updateUI();
+                startListening();
+                announce("تم تجهيز الملف. يمكنك الآن قول اقرأ أو التالي.");
             };
             reader.readAsArrayBuffer(file);
         };
 
-        function speakText() {
-            if (!extractedText) return;
-            stopSpeaking();
-            const utterance = new SpeechSynthesisUtterance(extractedText);
-            utterance.lang = 'ar-SA';
-            synth.speak(utterance);
+        function updateUI() {
+            document.getElementById('display-text').innerText = segments[index] || "انتهى الملف";
         }
 
-        function stopSpeaking() { synth.cancel(); }
-
-        document.getElementById('start-btn').onclick = () => {
-            stopSpeaking();
-            recognition.start();
-            document.getElementById('start-btn').disabled = true;
-            document.getElementById('stop-btn').disabled = false;
-            document.getElementById('status').innerText = "أسمعك الآن...";
-        };
-
-        document.getElementById('stop-btn').onclick = () => {
-            recognition.stop();
-            document.getElementById('start-btn').disabled = false;
-            document.getElementById('stop-btn').disabled = true;
-            document.getElementById('status').innerText = "تم إيقاف التسجيل";
-        };
-
-        function addAnswerToList(text) {
-            answersArray.push(text); // إضافة للنظام
-            const list = document.getElementById('answers-list');
-            const item = document.createElement('div');
-            item.className = 'answer-item';
-            item.innerText = text;
-            list.prepend(item);
+        function announce(msg) {
+            isSpeaking = true;
+            synth.cancel();
+            const utter = new SpeechSynthesisUtterance(msg);
+            utter.lang = 'ar-SA';
+            utter.onend = () => { 
+                isSpeaking = false; 
+                try { recognition.start(); } catch(e) {} // إعادة تشغيل الميكروفون بعد السكوت
+            };
+            recognition.stop(); // إيقاف الميكروفون أثناء الكلام لعدم التداخل
+            synth.speak(utter);
         }
 
-        // دالة تحميل الملف النصي (الجديدة)
-        function downloadAnswers() {
-            if (answersArray.length === 0) return alert("لا توجد إجابات لحفظها!");
-            
-            const content = "إجابات مشروع Viva EX:\n\n" + answersArray.join("\n");
-            const blob = new Blob([content], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
+        function startListening() {
+            try { recognition.start(); } catch(e) {}
+        }
+
+        recognition.onresult = (event) => {
+            if (isSpeaking) return;
+            const command = event.results[event.results.length - 1][0].transcript.trim();
+            console.log("الكلمة المسموعة:", command);
+
+            if (command.includes("اقرأ") || command.includes("اسمع")) {
+                announce(segments[index]);
+            } 
+            else if (command.includes("التالي") || command.includes("بعده")) {
+                if (index < segments.length - 1) {
+                    index++;
+                    updateUI();
+                    announce("السؤال التالي: " + segments[index]);
+                } else {
+                    announce("هذا هو السؤال الأخير");
+                }
+            } 
+            else if (command.includes("ارجع") || command.includes("قبل")) {
+                if (index > 0) {
+                    index--;
+                    updateUI();
+                    announce(segments[index]);
+                }
+            }
+            else if (command.includes("احفظ")) {
+                download();
+                announce("تم حفظ ملف الإجابات بنجاح");
+            }
+            else if (command.includes("وقف") || command.includes("اسكت")) {
+                synth.cancel();
+            }
+            else {
+                // تسجيل إجابة
+                finalAnswers.push(`السؤال: ${segments[index]} | الإجابة: ${command}`);
+                document.getElementById('status').innerText = "تم تسجيل إجابة للسؤال الحالي ✅";
+                // بعد تسجيل الإجابة، هل تريد الانتقال تلقائياً؟
+                // index++; updateUI(); announce("تم الحفظ. السؤال التالي: " + segments[index]);
+            }
+        };
+
+        // لضمان بقاء الميكروفون يعمل دائماً
+        recognition.onend = () => { if (!isSpeaking) recognition.start(); };
+
+        function download() {
+            const blob = new Blob(["تقرير Viva EX:\n\n" + finalAnswers.join("\n")], { type: 'text/plain' });
             const a = document.createElement('a');
-            a.href = url;
-            a.download = "viva_ex_answers.txt";
+            a.href = URL.createObjectURL(blob);
+            a.download = "viva_report.txt";
             a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function toggleTheme() {
-            document.body.setAttribute('data-theme', document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
         }
     </script>
 </body>
