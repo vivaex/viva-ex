@@ -3,41 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viva EX - Hands Free</title>
+    <title>Viva EX - استجابة فورية</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; --text: #202124; }
-        [data-theme="dark"] { --primary: #8ab4f8; --bg: #121212; --card: #1e1e1e; --text: #e8eaed; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); text-align: center; padding: 20px; margin: 0; transition: 0.3s; }
-        .card { background: var(--card); max-width: 800px; margin: 20px auto; padding: 40px; border-radius: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 2px solid var(--primary); }
-        .mic-status { width: 80px; height: 80px; border-radius: 50%; background: #ea4335; margin: 20px auto; display: flex; align-items: center; justify-content: center; color: white; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(234, 67, 53, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); } }
-        .listening { background: #34a853 !important; }
-        .content-box { font-size: 1.5rem; padding: 25px; border-radius: 15px; background: rgba(26, 115, 232, 0.1); margin: 20px 0; min-height: 100px; line-height: 1.8; }
-        .help-box { font-size: 0.9rem; opacity: 0.8; background: #eee; padding: 10px; border-radius: 10px; color: #333; }
-        .hidden { display: none; }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; --stop: #ea4335; }
+        [data-theme="dark"] { --primary: #8ab4f8; --bg: #121212; --card: #1e1e1e; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #333; text-align: center; padding: 20px; transition: 0.3s; }
+        .card { background: var(--card); max-width: 800px; margin: 20px auto; padding: 40px; border-radius: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .mic-indicator { width: 60px; height: 60px; border-radius: 50%; background: #34a853; margin: 20px auto; display: flex; align-items: center; justify-content: center; color: white; transition: 0.3s; }
+        .speaking { background: #fbbc05; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        .content-box { font-size: 1.6rem; padding: 30px; border-radius: 20px; background: rgba(26, 115, 232, 0.05); margin: 25px 0; border: 1px solid #ddd; }
+        .command-hint { font-size: 0.85rem; color: #666; font-weight: bold; }
+        button#start-btn { padding: 15px 40px; border-radius: 50px; border: none; background: var(--primary); color: white; font-size: 1.1rem; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h1>Viva EX AI</h1>
-        <p>ارفع الملف مرة واحدة.. ثم تحكم بصوتك فقط</p>
+        <h1>Viva EX Voice Instant</h1>
+        <p>نظام التحكم اللحظي - قل "وقف" في أي وقت</p>
 
-        <input type="file" id="file-input" accept=".pdf" class="hidden">
-        <button id="upload-btn" style="padding: 15px 30px; border-radius: 50px; border: none; background: var(--primary); color: white; font-weight: bold; cursor: pointer;">📁 اضغط هنا لرفع الملف والبدء</button>
+        <input type="file" id="file-input" accept=".pdf" style="display:none">
+        <button id="start-btn">📁 ارفع الملف وابدأ التحكم</button>
 
-        <div id="mic-indicator" class="mic-status hidden">🎤</div>
+        <div id="mic" class="mic-indicator" style="display:none">🎤</div>
         
-        <div id="status" style="font-weight: bold; margin: 15px 0;">بانتظار الملف...</div>
+        <div id="status" style="margin: 15px 0; font-weight: bold; color: var(--primary);">بانتظار رفع الـ PDF...</div>
 
         <div class="content-box" id="display-text">المحتوى سيظهر هنا</div>
 
-        <div class="help-box">
-            الأوامر الصوتية المتاحة: 
-            <b>[ اقرأ ] - [ التالي ] - [ ارجع ] - [ وقف ] - [ احفظ ]</b>
-            <br> (أي كلام آخر سيسجل كإجابة للسؤال الحالي)
-        </div>
+        <div class="command-hint">الأوامر السريعة: [ اقرأ ] - [ التالي ] - [ ارجع ] - [ **وقف** ] - [ احفظ ]</div>
     </div>
 
     <script>
@@ -45,26 +41,23 @@
         
         let segments = [];
         let index = 0;
-        let finalAnswers = [];
-        let isSpeaking = false;
-
+        let answers = [];
         const synth = window.speechSynthesis;
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        
+
         recognition.lang = 'ar-SA';
         recognition.continuous = true;
-        recognition.interimResults = false;
+        recognition.interimResults = true; // تفعيل النتائج المؤقتة لسرعة الاستجابة
 
-        // بدء العملية
-        document.getElementById('upload-btn').onclick = () => document.getElementById('file-input').click();
+        document.getElementById('start-btn').onclick = () => document.getElementById('file-input').click();
 
         document.getElementById('file-input').onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            document.getElementById('upload-btn').classList.add('hidden');
-            document.getElementById('mic-indicator').classList.remove('hidden');
-            document.getElementById('status').innerText = "جاري معالجة الملف...";
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('mic').style.display = 'flex';
+            document.getElementById('status').innerText = "جاري المعالجة...";
 
             const reader = new FileReader();
             reader.onload = async function() {
@@ -77,84 +70,82 @@
                 }
                 segments = fullText.split(/[.؟?]/).filter(s => s.trim().length > 3);
                 
-                document.getElementById('status').innerText = "تم التجهيز! أنا أسمعك الآن...";
-                document.getElementById('mic-indicator').classList.add('listening');
+                document.getElementById('status').innerText = "النظام مستعد تماماً ⚡";
                 updateUI();
-                startListening();
-                announce("تم تجهيز الملف. يمكنك الآن قول اقرأ أو التالي.");
+                recognition.start();
+                announce("تم التحميل. قل اقرأ للبدء.");
             };
             reader.readAsArrayBuffer(file);
         };
 
         function updateUI() {
-            document.getElementById('display-text').innerText = segments[index] || "انتهى الملف";
+            document.getElementById('display-text').innerText = segments[index] || "نهاية الملف";
         }
 
-        function announce(msg) {
-            isSpeaking = true;
-            synth.cancel();
-            const utter = new SpeechSynthesisUtterance(msg);
+        function announce(text) {
+            synth.cancel(); // إلغاء أي صوت سابق
+            const utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'ar-SA';
-            utter.onend = () => { 
-                isSpeaking = false; 
-                try { recognition.start(); } catch(e) {} // إعادة تشغيل الميكروفون بعد السكوت
-            };
-            recognition.stop(); // إيقاف الميكروفون أثناء الكلام لعدم التداخل
+            utter.onstart = () => document.getElementById('mic').classList.add('speaking');
+            utter.onend = () => document.getElementById('mic').classList.remove('speaking');
             synth.speak(utter);
         }
 
-        function startListening() {
-            try { recognition.start(); } catch(e) {}
-        }
-
         recognition.onresult = (event) => {
-            if (isSpeaking) return;
-            const command = event.results[event.results.length - 1][0].transcript.trim();
-            console.log("الكلمة المسموعة:", command);
+            let transcript = "";
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                transcript += event.results[i][0].transcript;
+            }
+            
+            console.log("السمع الحالي:", transcript);
 
-            if (command.includes("اقرأ") || command.includes("اسمع")) {
-                announce(segments[index]);
-            } 
-            else if (command.includes("التالي") || command.includes("بعده")) {
-                if (index < segments.length - 1) {
-                    index++;
-                    updateUI();
-                    announce("السؤال التالي: " + segments[index]);
-                } else {
-                    announce("هذا هو السؤال الأخير");
-                }
-            } 
-            else if (command.includes("ارجع") || command.includes("قبل")) {
-                if (index > 0) {
-                    index--;
-                    updateUI();
-                    announce(segments[index]);
-                }
-            }
-            else if (command.includes("احفظ")) {
-                download();
-                announce("تم حفظ ملف الإجابات بنجاح");
-            }
-            else if (command.includes("وقف") || command.includes("اسكت")) {
+            // أمر التوقف اللحظي (Priority One)
+            if (transcript.includes("وقف") || transcript.includes("اسكت") || transcript.includes("خلاص")) {
                 synth.cancel();
+                document.getElementById('status').innerText = "تم الإيقاف فوراً 🛑";
+                return;
             }
-            else {
-                // تسجيل إجابة
-                finalAnswers.push(`السؤال: ${segments[index]} | الإجابة: ${command}`);
-                document.getElementById('status').innerText = "تم تسجيل إجابة للسؤال الحالي ✅";
-                // بعد تسجيل الإجابة، هل تريد الانتقال تلقائياً؟
-                // index++; updateUI(); announce("تم الحفظ. السؤال التالي: " + segments[index]);
+
+            // معالجة الأوامر فقط عند اكتمال الجملة (isFinal) لضمان الدقة
+            if (event.results[event.results.length - 1].isFinal) {
+                const command = transcript.trim();
+                
+                if (command.includes("اقرأ")) {
+                    announce(segments[index]);
+                } 
+                else if (command.includes("التالي") || command.includes("بعده")) {
+                    if (index < segments.length - 1) {
+                        index++;
+                        updateUI();
+                        announce(segments[index]);
+                    }
+                } 
+                else if (command.includes("ارجع") || command.includes("قبل")) {
+                    if (index > 0) {
+                        index--;
+                        updateUI();
+                        announce(segments[index]);
+                    }
+                }
+                else if (command.includes("احفظ")) {
+                    download();
+                }
+                else {
+                    // تسجيل إجابة تلقائية
+                    answers.push(`س: ${segments[index]} | ج: ${command}`);
+                    document.getElementById('status').innerText = "سجلت إجابتك: " + command;
+                }
             }
         };
 
-        // لضمان بقاء الميكروفون يعمل دائماً
-        recognition.onend = () => { if (!isSpeaking) recognition.start(); };
+        recognition.onerror = () => recognition.start();
+        recognition.onend = () => recognition.start();
 
         function download() {
-            const blob = new Blob(["تقرير Viva EX:\n\n" + finalAnswers.join("\n")], { type: 'text/plain' });
+            const blob = new Blob([answers.join("\n")], { type: 'text/plain' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = "viva_report.txt";
+            a.download = "viva_ex_report.txt";
             a.click();
         }
     </script>
