@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viva EX - منصة التعليم التفاعلية الذكية للصم</title>
+    <title>Viva EX - منصة الوصول الشامل</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
         :root {
-            --primary: #1a73e8; /* Cobalt Blue */
-            --secondary: #34a853; /* Emerald Green */
+            --primary: #1a73e8;
+            --secondary: #34a853;
+            --accent: #fbbc04;
             --bg: #f8f9fa;
-            --card-bg: #ffffff;
+            --card: #ffffff;
             --text: #202124;
-            --shadow: 0 10px 40px rgba(0,0,0,0.1);
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: var(--bg);
             color: var(--text);
             margin: 0;
             padding: 20px;
@@ -29,73 +29,70 @@
 
         .container {
             width: 100%;
-            max-width: 1000px;
-            background: var(--card-bg);
+            max-width: 950px;
+            background: var(--card);
             padding: 30px;
             border-radius: 30px;
-            box-shadow: var(--shadow);
+            box-shadow: 0 10px 50px rgba(0,0,0,0.1);
             text-align: center;
         }
 
-        header h1 { color: var(--primary); font-size: 2.2rem; margin-bottom: 5px; }
-
-        /* المحلل البصري للذبذبات */
-        .visualizer-box {
+        /* الموجه البصري للصم */
+        .visualizer-container {
             width: 100%;
-            height: 80px;
+            height: 100px;
             background: #000;
-            border-radius: 15px;
+            border-radius: 20px;
             margin: 15px 0;
             overflow: hidden;
-            border: 3px solid #333;
+            border: 4px solid #333;
         }
         canvas { width: 100%; height: 100%; }
 
-        /* صندوق المحتوى */
+        /* منطقة المحتوى */
         .content-display {
-            font-size: 1.6rem;
-            padding: 30px;
+            font-size: 1.8rem;
+            padding: 40px;
             background: rgba(26, 115, 232, 0.05);
-            border: 3px solid transparent;
-            border-radius: 20px;
-            margin-bottom: 15px;
-            min-height: 120px;
-            line-height: 1.6;
+            border: 4px solid transparent;
+            border-radius: 25px;
+            margin-bottom: 20px;
+            min-height: 140px;
             transition: 0.3s;
+            cursor: pointer;
         }
-        .listening-active { border-color: var(--secondary); background: #e6f4ea; }
+        .active-listening { border-color: var(--secondary); background: #e6f4ea; }
 
-        /* مصفوفة الرموز التعبيرية والردود السريعة */
-        .pictogram-matrix {
+        /* الردود السريعة (Pictograms) */
+        .pictogram-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 15px;
             margin: 20px 0;
         }
-        .pictogram-btn {
-            background: var(--card-bg);
+        .picto-btn {
+            background: #fff;
             border: 2px solid #ddd;
-            border-radius: 15px;
-            padding: 20px;
+            border-radius: 20px;
+            padding: 15px;
             cursor: pointer;
-            transition: 0.3s;
+            transition: 0.2s;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
         }
-        .pictogram-btn:hover { border-color: var(--primary); transform: translateY(-3px); }
-        .pictogram-btn img { width: 50px; height: 50px; margin-bottom: 5px; }
-        .pictogram-btn span { font-size: 0.9rem; font-weight: bold; }
+        .picto-btn:hover { border-color: var(--primary); transform: translateY(-5px); }
+        .picto-btn img { width: 45px; height: 45px; margin-bottom: 8px; }
 
-        /* أزرار الحالة */
-        .status-msg { font-weight: bold; color: var(--primary); margin-bottom: 10px; font-size: 1rem; }
-        .btn-main { padding: 15px 35px; border-radius: 50px; border: none; background: var(--primary); color: white; cursor: pointer; font-size: 1.1rem; font-weight: bold; }
+        .status-bar { font-weight: bold; color: var(--primary); margin-bottom: 15px; font-size: 1.1rem; }
         
-        /* سجل الإجابات */
-        .log-section { text-align: right; border-top: 2px solid #eee; padding-top: 20px; }
-        .log-item { background: #fff; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-right: 5px solid var(--secondary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        /* تعليمات للمكفوفين */
+        .keyboard-info { font-size: 0.8rem; opacity: 0.6; margin-top: 10px; }
+        
+        .log-area { margin-top: 30px; text-align: right; border-top: 2px solid #eee; padding-top: 20px; }
+        .log-card { background: #f1f3f4; padding: 15px; border-radius: 12px; margin-bottom: 10px; border-right: 6px solid var(--secondary); }
 
+        .btn-upload { background: var(--primary); color: white; border: none; padding: 18px 50px; border-radius: 50px; font-size: 1.3rem; font-weight: bold; cursor: pointer; }
         .hidden { display: none; }
     </style>
 </head>
@@ -104,53 +101,55 @@
     <div class="container">
         <header>
             <h1>Viva EX</h1>
-            <p>منصة التعليم الذكي والوصول الشامل للصم</p>
+            <p>المنصة الذكية للوصول الشامل (صم وعميان)</p>
         </header>
 
-        <div id="setup-view">
+        <div id="start-view">
             <input type="file" id="file-input" accept=".pdf" class="hidden">
-            <button class="btn-main" onclick="document.getElementById('file-input').click()">📁 ارفع ملف PDF للبدء</button>
+            <button class="btn-upload" onclick="document.getElementById('file-input').click()">📁 ارفع ملف PDF للبدء</button>
         </div>
 
         <div id="app-view" class="hidden">
-            <div id="status" class="status-msg">يرجى الانتظار، جاري التحميل...</div>
+            <div id="status" class="status-bar">جاري التجهيز...</div>
             
-            <div class="visualizer-box">
-                <canvas id="visualizer"></canvas>
+            <div class="visualizer-container">
+                <canvas id="canvas"></canvas>
             </div>
 
-            <div class="content-display" id="display-text">المحتوى يظهر هنا</div>
+            <div class="content-display" id="display-text" onclick="announce(segments[index])">
+                انقر هنا أو اضغط Space للسماع
+            </div>
 
-            <div class="pictogram-matrix">
-                <button class="pictogram-btn" onclick="saveAnswer('صح')">
-                    <img src="https://cdn-icons-png.flaticon.com/512/190/190411.png" alt="صح">
+            <div class="pictogram-grid">
+                <button class="picto-btn" onclick="saveAnswer('صح')">
+                    <img src="https://cdn-icons-png.flaticon.com/512/190/190411.png" alt="">
                     <span>صح</span>
                 </button>
-                <button class="pictogram-btn" onclick="saveAnswer('خطأ')">
-                    <img src="https://cdn-icons-png.flaticon.com/512/190/190406.png" alt="خطأ">
+                <button class="picto-btn" onclick="saveAnswer('خطأ')">
+                    <img src="https://cdn-icons-png.flaticon.com/512/190/190406.png" alt="">
                     <span>خطأ</span>
                 </button>
-                <button class="pictogram-btn" onclick="saveAnswer('نعم')">
-                    <img src="https://cdn-icons-png.flaticon.com/512/10476/10476686.png" alt="نعم">
+                <button class="picto-btn" onclick="saveAnswer('نعم')">
+                    <img src="https://cdn-icons-png.flaticon.com/512/10476/10476686.png" alt="">
                     <span>نعم</span>
                 </button>
-                <button class="pictogram-btn" onclick="saveAnswer('لا')">
-                    <img src="https://cdn-icons-png.flaticon.com/512/10476/10476684.png" alt="لا">
+                <button class="picto-btn" onclick="saveAnswer('لا')">
+                    <img src="https://cdn-icons-png.flaticon.com/512/10476/10476684.png" alt="">
                     <span>لا</span>
                 </button>
-                <button class="pictogram-btn" onclick="saveAnswer('أوافق')">
-                    <img src="https://cdn-icons-png.flaticon.com/512/2343/2343277.png" alt="أوافق">
-                    <span>أوافق</span>
+                <button class="picto-btn" onclick="downloadFile()" style="background: var(--accent);">
+                    <img src="https://cdn-icons-png.flaticon.com/512/11186/11186982.png" alt="">
+                    <span>حفظ التقرير</span>
                 </button>
-                <button class="pictogram-btn" onclick="downloadFile()">
-                    <img src="https://cdn-icons-png.flaticon.com/512/11186/11186982.png" alt="حفظ">
-                    <span>احفظ</span>
-                </button>
+            </div>
+
+            <div class="keyboard-info">
+                للمكفوفين: [Space: قراءة] | [سهم يمين: التالي] | [سهم يسار: قبل] | [S: حفظ]
             </div>
         </div>
 
-        <div id="log-section" class="log-section hidden">
-            <h3>سجل الإجابات الموثقة بصرياً وصوتياً:</h3>
+        <div id="log-section" class="log-area hidden">
+            <h3>سجل الإجابات:</h3>
             <div id="log-container"></div>
         </div>
     </div>
@@ -160,8 +159,8 @@
 
         let segments = [];
         let index = 0;
-        let results = []; 
-        let isSpeaking = false;
+        let finalResults = [];
+        let isSystemSpeaking = false;
 
         const synth = window.speechSynthesis;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -170,25 +169,24 @@
         recognition.continuous = true;
         recognition.interimResults = true;
 
+        // إعداد المحلل البصري للصوت (للمكفوفين والصم)
         let audioCtx, analyser, dataArray, canvas, canvasCtx;
 
         async function initVisualizer() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 256;
-                const source = audioCtx.createMediaStreamSource(stream);
-                source.connect(analyser);
-                dataArray = new Uint8Array(analyser.frequencyBinCount);
-                canvas = document.getElementById('visualizer');
-                canvasCtx = canvas.getContext('2d');
-                drawVisualizer();
-            } catch (err) { console.error("Visualizer Init Error", err); }
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            const source = audioCtx.createMediaStreamSource(stream);
+            source.connect(analyser);
+            analyser.fftSize = 256;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            canvas = document.getElementById('canvas');
+            canvasCtx = canvas.getContext('2d');
+            drawWave();
         }
 
-        function drawVisualizer() {
-            requestAnimationFrame(drawVisualizer);
+        function drawWave() {
+            requestAnimationFrame(drawWave);
             analyser.getByteFrequencyData(dataArray);
             canvasCtx.fillStyle = '#000';
             canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
@@ -196,17 +194,18 @@
             let barHeight, x = 0;
             for(let i = 0; i < dataArray.length; i++) {
                 barHeight = dataArray[i] / 1.5;
-                canvasCtx.fillStyle = isSpeaking ? '#fbbc05' : '#34a853';
+                canvasCtx.fillStyle = isSystemSpeaking ? '#fbbc04' : '#34a853';
                 canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
                 x += barWidth + 1;
             }
         }
 
+        // رفع الملف ونطق الحالة
         document.getElementById('file-input').onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            document.getElementById('setup-view').classList.add('hidden');
+            document.getElementById('start-view').classList.add('hidden');
             document.getElementById('app-view').classList.remove('hidden');
             document.getElementById('log-section').classList.remove('hidden');
 
@@ -224,7 +223,7 @@
                 segments = fullText.split(/[.؟?]/).filter(s => s.trim().length > 5);
                 updateUI();
                 recognition.start();
-                announce("تم التحميل. قل 'اقرأ' أو استخدم الرموز للإجابة.");
+                announceSystem("تم رفع الملف بنجاح يا مازاجي. يوجد " + segments.length + " أسئلة. اضغط مسافة لسماع السؤال الأول.");
             };
             reader.readAsArrayBuffer(file);
         };
@@ -233,48 +232,54 @@
             document.getElementById('display-text').innerText = segments[index] || "نهاية الملف";
         }
 
-        function announce(text) {
+        // دالة النطق للنظام
+        function announceSystem(msg) {
             synth.cancel();
-            const ut = new SpeechSynthesisUtterance(text);
-            ut.lang = 'ar-SA';
-            ut.onstart = () => { isSpeaking = true; document.getElementById('status').innerText = "جاري القراءة بصوت مرتفع... 🔊"; document.getElementById('display-text').classList.remove('listening-active'); };
-            ut.onend = () => { isSpeaking = false; document.getElementById('status').innerText = "تحدث الآن 🎤 أو استخدم الرموز بصرياً 👇"; document.getElementById('display-text').classList.add('listening-active'); };
-            synth.speak(ut);
+            const utter = new SpeechSynthesisUtterance(msg);
+            utter.lang = 'ar-SA';
+            utter.onstart = () => { isSystemSpeaking = true; document.getElementById('status').innerText = "النظام يتحدث... 🔊"; };
+            utter.onend = () => { isSystemSpeaking = false; document.getElementById('status').innerText = "أنا أسمعك الآن 🎤"; };
+            synth.speak(utter);
         }
 
+        // اختصارات لوحة المفاتيح (للمكفوفين)
+        window.addEventListener('keydown', (e) => {
+            if (e.code === "Space") { e.preventDefault(); announceSystem(segments[index]); }
+            if (e.code === "ArrowRight") { if(index < segments.length-1) { index++; updateUI(); announceSystem(segments[index]); } }
+            if (e.code === "ArrowLeft") { if(index > 0) { index--; updateUI(); announceSystem(segments[index]); } }
+            if (e.key.toLowerCase() === "s") { downloadFile(); announceSystem("جاري حفظ التقرير"); }
+        });
+
+        // معالجة الصوت (للجميع)
         recognition.onresult = (event) => {
             let transcript = "";
             for (let i = event.resultIndex; i < event.results.length; ++i) transcript += event.results[i][0].transcript;
-
-            if (transcript.includes("وقف") || transcript.includes("اسكت")) { synth.cancel(); isSpeaking = false; return; }
-            if (isSpeaking) return;
+            
+            if (transcript.includes("وقف") || transcript.includes("اسكت")) { synth.cancel(); isSystemSpeaking = false; return; }
+            if (isSystemSpeaking) return;
 
             if (event.results[event.results.length - 1].isFinal) {
                 const cmd = transcript.trim();
-                if (cmd.includes("اقرأ")) announce(segments[index]);
-                else if (cmd.includes("التالي")) { index++; updateUI(); announce(segments[index]); }
-                else if (cmd.includes("ارجع")) { if(index > 0) index--; updateUI(); speak(segments[index]); }
+                if (cmd.includes("اقرأ")) announceSystem(segments[index]);
+                else if (cmd.includes("التالي")) { index++; updateUI(); announceSystem(segments[index]); }
                 else if (cmd.includes("احفظ")) downloadFile();
                 else if (cmd.length > 2) saveAnswer(cmd);
             }
         };
 
         function saveAnswer(ans) {
-            const q = segments[index];
-            results.push({ q: q, a: ans });
+            results.push({ q: segments[index], a: ans });
             const item = document.createElement('div');
-            item.className = 'log-item';
-            item.innerHTML = `<b>سؤال:</b> ${q}<br><b>إجابة:</b> <span style="color:var(--secondary)">${ans}</span>`;
+            item.className = 'log-card';
+            item.innerHTML = `<b>سؤال:</b> ${segments[index]}<br><b>إجابة:</b> ${ans}`;
             document.getElementById('log-container').prepend(item);
-            document.getElementById('status').innerText = "تم حفظ الإجابة بنجاح ✅ (صح)";
-            // بعد حفظ الرد، هل ننتقل؟ اختياري.
-            // if (ans === 'صح' || ans === 'خطأ') { index++; updateUI(); announce(segments[index]); }
+            document.getElementById('status').innerText = "تم تسجيل الإجابة ✅";
         }
 
         function downloadFile() {
-            let content = "Viva EX - تقرير الطالب التفاعلي\n\n" + results.map((r,i) => `${i+1}) س: ${r.q}\n   ج: ${r.a}\n---`).join("\n");
+            let content = "تقرير Viva EX التعليمي الشامل\n\n" + results.map(r => `س: ${r.q}\nج: ${r.a}\n---`).join("\n");
             const blob = new Blob([content], { type: 'text/plain' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "viva_exam_report.txt"; a.click();
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "viva_report.txt"; a.click();
         }
 
         recognition.onend = () => recognition.start();
