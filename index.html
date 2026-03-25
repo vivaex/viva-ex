@@ -3,33 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viva EX - التفاعل الذكي</title>
+    <title>Viva EX - تحكم كامل</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; --text: #202124; --accent: #ea4335; }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; --text: #202124; --stop: #ea4335; --record: #34a853; }
         [data-theme="dark"] { --primary: #8ab4f8; --bg: #121212; --card: #1e1e1e; --text: #e8eaed; }
         
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; text-align: center; padding: 20px; margin: 0; }
         .card { background: var(--card); max-width: 700px; margin: 20px auto; padding: 30px; border-radius: 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
         .controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .btn { border: none; padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: bold; background: var(--primary); color: white; transition: 0.2s; font-size: 1rem; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .btn-stop { background: var(--accent); }
-        .btn-voice { background: #34a853; }
+        .btn { border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: bold; background: var(--primary); color: white; transition: 0.2s; }
+        .btn:hover { opacity: 0.9; transform: scale(1.02); }
+        .btn-stop { background: var(--stop); }
+        .btn-record { background: var(--record); }
         
         .content-area { margin-top: 20px; border: 2px solid #eee; padding: 20px; border-radius: 15px; min-height: 120px; text-align: right; overflow-y: auto; max-height: 250px; line-height: 1.6; }
         .answers-section { margin-top: 30px; text-align: right; }
-        .answer-item { background: #e8f0fe; padding: 10px 15px; border-radius: 10px; margin-bottom: 10px; border-right: 5px solid var(--primary); animation: slideIn 0.3s ease; }
-        
-        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-        .status { font-size: 0.9rem; color: #1a73e8; margin: 10px 0; font-weight: bold; }
+        .answer-item { background: rgba(26, 115, 232, 0.1); padding: 12px; border-radius: 10px; margin-bottom: 10px; border-right: 5px solid var(--primary); font-weight: 500; }
+        .status { font-size: 0.95rem; color: var(--primary); margin: 15px 0; font-weight: bold; min-height: 20px; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h1>Viva EX Voice Control</h1>
-        <p>تحكم بالقراءة، أوقف الصوت، وسجل إجاباتك</p>
+        <h1>Viva EX Control</h1>
+        <p>إدارة كاملة للملفات، القراءة، والتسجيل الصوتي</p>
 
         <div class="controls">
             <button class="btn" onclick="document.getElementById('file-input').click()">📁 ارفع ملف PDF</button>
@@ -37,20 +35,22 @@
             <button class="btn" onclick="toggleTheme()">🌓 النمط</button>
         </div>
 
-        <div class="content-area" id="pdf-text">بانتظار رفع الملف...</div>
-        
+        <div class="content-area" id="pdf-text">ارفع ملفك لنبدأ العمل...</div>
         <div id="status" class="status"></div>
 
-        <div class="controls" style="margin-top: 20px;">
+        <div class="controls">
             <button class="btn" onclick="speakText()">🔊 بدء القراءة</button>
-            <button class="btn btn-stop" onclick="stopSpeaking()">🛑 إيقاف مؤقت</button>
-            <button class="btn btn-voice" id="start-record">🎤 تسجيل إجابة</button>
+            <button class="btn btn-stop" onclick="stopSpeaking()">🛑 إيقاف القراءة</button>
+        </div>
+
+        <div class="controls" style="background: rgba(0,0,0,0.05); padding: 15px; border-radius: 15px;">
+            <button class="btn btn-record" id="start-btn">🎤 ابدأ تسجيل الإجابة</button>
+            <button class="btn btn-stop" id="stop-btn" disabled>⏹️ إيقاف التسجيل</button>
         </div>
 
         <div class="answers-section">
-            <h3>إجاباتك المسجلة:</h3>
-            <div id="answers-list">
-                </div>
+            <h3>قائمة الإجابات المسموعة:</h3>
+            <div id="answers-list"></div>
         </div>
     </div>
 
@@ -58,12 +58,31 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
         let extractedText = "";
         let synth = window.speechSynthesis;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
 
-        // 1. استخراج النص
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ar-SA';
+            recognition.continuous = true; // يبقى يسجل حتى تضغط إيقاف
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript;
+                addAnswerToList(transcript);
+            };
+
+            recognition.onend = () => {
+                document.getElementById('start-btn').disabled = false;
+                document.getElementById('stop-btn').disabled = true;
+                document.getElementById('status').innerText = "انتهى التسجيل ✅";
+            };
+        }
+
+        // استخراج النص
         document.getElementById('file-input').onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            document.getElementById('status').innerText = "جاري استخراج النص...";
+            document.getElementById('status').innerText = "جاري القراءة...";
             const reader = new FileReader();
             reader.onload = async function() {
                 const typedarray = new Uint8Array(this.result);
@@ -76,56 +95,46 @@
                 }
                 extractedText = fullText;
                 document.getElementById('pdf-text').innerText = extractedText;
-                document.getElementById('status').innerText = "تم التحميل بنجاح ✅";
+                document.getElementById('status').innerText = "الملف جاهز ✅";
             };
             reader.readAsArrayBuffer(file);
         };
 
-        // 2. القراءة الصوتية
+        // التحكم بالقراءة
         function speakText() {
             if (!extractedText) return alert("ارفع ملف أولاً!");
-            stopSpeaking(); // تنظيف أي صوت شغال
+            stopSpeaking();
             const utterance = new SpeechSynthesisUtterance(extractedText);
             utterance.lang = 'ar-SA';
             synth.speak(utterance);
             document.getElementById('status').innerText = "جاري القراءة الآن... 🔊";
         }
 
-        // 3. زر الإيقاف (طلبك الأساسي)
         function stopSpeaking() {
-            if (synth.speaking) {
-                synth.cancel();
-                document.getElementById('status').innerText = "تم إيقاف القراءة 🛑";
-            }
+            synth.cancel();
+            document.getElementById('status').innerText = "توقفت القراءة 🛑";
         }
 
-        // 4. تسجيل الإجابة الصوتية وإضافتها للقائمة
-        const recordBtn = document.getElementById('start-record');
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'ar-SA';
+        // التحكم بالتسجيل (أهم جزء في طلبك)
+        document.getElementById('start-btn').onclick = () => {
+            stopSpeaking(); // أوقف القراءة فوراً قبل البدء
+            recognition.start();
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('stop-btn').disabled = false;
+            document.getElementById('status').innerText = "أسمعك الآن... تكلّم 🎤";
+        };
 
-            recordBtn.onclick = () => {
-                stopSpeaking(); // نوقف القراءة تلقائياً لما يبدأ يسجل
-                recognition.start();
-                document.getElementById('status').innerText = "أنا أسمعك الآن... تكلّم";
-            };
-
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                addAnswerToList(transcript);
-                document.getElementById('status').innerText = "تم تسجيل إجابتك ✅";
-            };
-        }
+        document.getElementById('stop-btn').onclick = () => {
+            recognition.stop();
+            document.getElementById('status').innerText = "جاري معالجة الصوت... 🔄";
+        };
 
         function addAnswerToList(text) {
             const list = document.getElementById('answers-list');
-            const newAnswer = document.createElement('div');
-            newAnswer.className = 'answer-item';
-            newAnswer.innerText = text;
-            list.prepend(newAnswer); // يضيف الإجابة الجديدة في البداية
+            const item = document.createElement('div');
+            item.className = 'answer-item';
+            item.innerText = text;
+            list.prepend(item);
         }
 
         function toggleTheme() {
