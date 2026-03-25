@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viva EX - منصة الوصول الشامل</title>
+    <title>Viva EX - نظام الوصول الشامل</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
         :root {
@@ -37,7 +37,6 @@
             text-align: center;
         }
 
-        /* المحلل البصري للصوت */
         .visualizer-container {
             width: 100%;
             height: 100px;
@@ -49,7 +48,6 @@
         }
         canvas { width: 100%; height: 100%; }
 
-        /* منطقة المحتوى */
         .content-display {
             font-size: 1.8rem;
             padding: 40px;
@@ -63,7 +61,6 @@
         }
         .active-listening { border-color: var(--secondary); background: #e6f4ea; }
 
-        /* أزرار التحكم داخل السؤال */
         .q-controls {
             position: absolute;
             bottom: 10px;
@@ -79,12 +76,8 @@
             border-radius: 12px;
             cursor: pointer;
             font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 5px;
         }
 
-        /* الردود السريعة (Pictograms) */
         .pictogram-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -97,7 +90,6 @@
             border-radius: 20px;
             padding: 15px;
             cursor: pointer;
-            transition: 0.2s;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -107,9 +99,28 @@
 
         .status-bar { font-weight: bold; color: var(--primary); margin-bottom: 15px; font-size: 1.1rem; }
         
-        .keyboard-info { font-size: 0.8rem; opacity: 0.6; margin-top: 10px; }
+        /* سجل الإجابات - تأكدت من خصائصه ليكون ظاهراً */
+        .log-area {
+            margin-top: 40px;
+            text-align: right;
+            border-top: 3px solid var(--primary);
+            padding-top: 20px;
+            width: 100%;
+            display: block; /* نجعله ظاهر برمجياً */
+        }
+        .log-card {
+            background: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border-right: 8px solid var(--secondary);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         .btn-upload { background: var(--primary); color: white; border: none; padding: 18px 50px; border-radius: 50px; font-size: 1.3rem; font-weight: bold; cursor: pointer; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -162,14 +173,10 @@
                 </button>
             </div>
 
-            <div class="keyboard-info">
-                [Space: قراءة/إعادة] | [R: إعادة] | [سهم يمين: التالي] | [سهم يسار: قبل] | [S: حفظ]
+            <div id="log-section" class="log-area hidden">
+                <h3>📜 سجل الإجابات الموثقة:</h3>
+                <div id="log-container"></div>
             </div>
-        </div>
-
-        <div id="log-section" style="margin-top: 30px; text-align: right; border-top: 2px solid #eee; padding-top: 20px;" class="hidden">
-            <h3>سجل الإجابات:</h3>
-            <div id="log-container"></div>
         </div>
     </div>
 
@@ -223,7 +230,7 @@
             if (!file) return;
             document.getElementById('start-view').classList.add('hidden');
             document.getElementById('app-view').classList.remove('hidden');
-            document.getElementById('log-section').classList.remove('hidden');
+            document.getElementById('log-section').classList.remove('hidden'); // إظهار السجل فور الرفع
             await initVisualizer();
 
             const reader = new FileReader();
@@ -238,7 +245,7 @@
                 segments = fullText.split(/[.؟?]/).filter(s => s.trim().length > 5);
                 updateUI();
                 recognition.start();
-                announceSystem("تم التحميل بنجاح. قل اقرأ أو أعد لسماع السؤال.");
+                announceSystem("تم التحميل. يمكنك البدء الآن يا مازاجي.");
             };
             reader.readAsArrayBuffer(file);
         };
@@ -251,33 +258,17 @@
             synth.cancel();
             const utter = new SpeechSynthesisUtterance(msg);
             utter.lang = 'ar-SA';
-            utter.onstart = () => { isSystemSpeaking = true; document.getElementById('status').innerText = "النظام يتحدث... 🔊"; document.getElementById('display-text').classList.remove('active-listening'); };
-            utter.onend = () => { isSystemSpeaking = false; document.getElementById('status').innerText = "أنا أسمعك الآن 🎤"; document.getElementById('display-text').classList.add('active-listening'); };
+            utter.onstart = () => { isSystemSpeaking = true; document.getElementById('display-text').classList.remove('active-listening'); };
+            utter.onend = () => { isSystemSpeaking = false; document.getElementById('display-text').classList.add('active-listening'); };
             synth.speak(utter);
         }
-
-        window.addEventListener('keydown', (e) => {
-            if (e.code === "Space") { e.preventDefault(); announceSystem(segments[index]); }
-            if (e.key.toLowerCase() === "r") { announceSystem(segments[index]); }
-            if (e.code === "ArrowRight") { if(index < segments.length-1) { index++; updateUI(); announceSystem(segments[index]); } }
-            if (e.code === "ArrowLeft") { if(index > 0) { index--; updateUI(); announceSystem(segments[index]); } }
-            if (e.key.toLowerCase() === "s") { downloadFile(); }
-        });
 
         recognition.onresult = (event) => {
             let transcript = "";
             for (let i = event.resultIndex; i < event.results.length; ++i) transcript += event.results[i][0].transcript;
-            
-            if (transcript.includes("وقف") || transcript.includes("اسكت")) { synth.cancel(); isSystemSpeaking = false; return; }
-            
-            // إضافة أمر "أعد" أو "كرر" صوتياً
-            if (transcript.includes("أعد") || transcript.includes("كرر") || transcript.includes("مرة ثانية")) {
-                announceSystem(segments[index]);
-                return;
-            }
-
+            if (transcript.includes("وقف")) { synth.cancel(); return; }
+            if (transcript.includes("أعد") || transcript.includes("كرر")) { announceSystem(segments[index]); return; }
             if (isSystemSpeaking) return;
-
             if (event.results[event.results.length - 1].isFinal) {
                 const cmd = transcript.trim();
                 if (cmd.includes("اقرأ")) announceSystem(segments[index]);
@@ -288,15 +279,22 @@
         };
 
         function saveAnswer(ans) {
-            results.push({ q: segments[index], a: ans });
+            const q = segments[index];
+            finalResults.push({ q: q, a: ans });
+
+            // إضافة الإجابة للسجل وضمان ظهوره
+            const container = document.getElementById('log-container');
             const item = document.createElement('div');
-            item.style = "background:#f1f3f4; padding:15px; border-radius:12px; margin-bottom:10px; border-right:6px solid var(--secondary);";
-            item.innerHTML = `<b>سؤال:</b> ${segments[index]}<br><b>إجابة:</b> ${ans}`;
-            document.getElementById('log-container').prepend(item);
+            item.className = 'log-card';
+            item.innerHTML = `<b>سؤال رقم (${index + 1}):</b> ${q}<br><b>الإجابة:</b> <span style="color:var(--secondary)">${ans}</span>`;
+            container.prepend(item);
+            
+            // التأكيد على إزالة خاصية الإخفاء إذا كانت موجودة
+            document.getElementById('log-section').classList.remove('hidden');
         }
 
         function downloadFile() {
-            let content = "تقرير Viva EX\n\n" + results.map(r => `س: ${r.q}\nج: ${r.a}\n---`).join("\n");
+            let content = "تقرير Viva EX\n\n" + finalResults.map(r => `س: ${r.q}\nج: ${r.a}\n---`).join("\n");
             const blob = new Blob([content], { type: 'text/plain' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "report.txt"; a.click();
         }
