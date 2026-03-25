@@ -37,7 +37,7 @@
             text-align: center;
         }
 
-        /* الموجه البصري للصم */
+        /* المحلل البصري للصوت */
         .visualizer-container {
             width: 100%;
             height: 100px;
@@ -59,9 +59,30 @@
             margin-bottom: 20px;
             min-height: 140px;
             transition: 0.3s;
-            cursor: pointer;
+            position: relative;
         }
         .active-listening { border-color: var(--secondary); background: #e6f4ea; }
+
+        /* أزرار التحكم داخل السؤال */
+        .q-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-mini {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
 
         /* الردود السريعة (Pictograms) */
         .pictogram-grid {
@@ -86,12 +107,7 @@
 
         .status-bar { font-weight: bold; color: var(--primary); margin-bottom: 15px; font-size: 1.1rem; }
         
-        /* تعليمات للمكفوفين */
         .keyboard-info { font-size: 0.8rem; opacity: 0.6; margin-top: 10px; }
-        
-        .log-area { margin-top: 30px; text-align: right; border-top: 2px solid #eee; padding-top: 20px; }
-        .log-card { background: #f1f3f4; padding: 15px; border-radius: 12px; margin-bottom: 10px; border-right: 6px solid var(--secondary); }
-
         .btn-upload { background: var(--primary); color: white; border: none; padding: 18px 50px; border-radius: 50px; font-size: 1.3rem; font-weight: bold; cursor: pointer; }
         .hidden { display: none; }
     </style>
@@ -116,8 +132,11 @@
                 <canvas id="canvas"></canvas>
             </div>
 
-            <div class="content-display" id="display-text" onclick="announce(segments[index])">
-                انقر هنا أو اضغط Space للسماع
+            <div class="content-display" id="display-text">
+                المحتوى يظهر هنا
+                <div class="q-controls">
+                    <button class="btn-mini" onclick="announceSystem(segments[index])">🔄 إعادة القراءة</button>
+                </div>
             </div>
 
             <div class="pictogram-grid">
@@ -144,11 +163,11 @@
             </div>
 
             <div class="keyboard-info">
-                للمكفوفين: [Space: قراءة] | [سهم يمين: التالي] | [سهم يسار: قبل] | [S: حفظ]
+                [Space: قراءة/إعادة] | [R: إعادة] | [سهم يمين: التالي] | [سهم يسار: قبل] | [S: حفظ]
             </div>
         </div>
 
-        <div id="log-section" class="log-area hidden">
+        <div id="log-section" style="margin-top: 30px; text-align: right; border-top: 2px solid #eee; padding-top: 20px;" class="hidden">
             <h3>سجل الإجابات:</h3>
             <div id="log-container"></div>
         </div>
@@ -169,7 +188,6 @@
         recognition.continuous = true;
         recognition.interimResults = true;
 
-        // إعداد المحلل البصري للصوت (للمكفوفين والصم)
         let audioCtx, analyser, dataArray, canvas, canvasCtx;
 
         async function initVisualizer() {
@@ -200,15 +218,12 @@
             }
         }
 
-        // رفع الملف ونطق الحالة
         document.getElementById('file-input').onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
             document.getElementById('start-view').classList.add('hidden');
             document.getElementById('app-view').classList.remove('hidden');
             document.getElementById('log-section').classList.remove('hidden');
-
             await initVisualizer();
 
             const reader = new FileReader();
@@ -223,39 +238,44 @@
                 segments = fullText.split(/[.؟?]/).filter(s => s.trim().length > 5);
                 updateUI();
                 recognition.start();
-                announceSystem("تم رفع الملف بنجاح يا مازاجي. يوجد " + segments.length + " أسئلة. اضغط مسافة لسماع السؤال الأول.");
+                announceSystem("تم التحميل بنجاح. قل اقرأ أو أعد لسماع السؤال.");
             };
             reader.readAsArrayBuffer(file);
         };
 
         function updateUI() {
-            document.getElementById('display-text').innerText = segments[index] || "نهاية الملف";
+            document.getElementById('display-text').childNodes[0].nodeValue = segments[index] || "نهاية الملف";
         }
 
-        // دالة النطق للنظام
         function announceSystem(msg) {
             synth.cancel();
             const utter = new SpeechSynthesisUtterance(msg);
             utter.lang = 'ar-SA';
-            utter.onstart = () => { isSystemSpeaking = true; document.getElementById('status').innerText = "النظام يتحدث... 🔊"; };
-            utter.onend = () => { isSystemSpeaking = false; document.getElementById('status').innerText = "أنا أسمعك الآن 🎤"; };
+            utter.onstart = () => { isSystemSpeaking = true; document.getElementById('status').innerText = "النظام يتحدث... 🔊"; document.getElementById('display-text').classList.remove('active-listening'); };
+            utter.onend = () => { isSystemSpeaking = false; document.getElementById('status').innerText = "أنا أسمعك الآن 🎤"; document.getElementById('display-text').classList.add('active-listening'); };
             synth.speak(utter);
         }
 
-        // اختصارات لوحة المفاتيح (للمكفوفين)
         window.addEventListener('keydown', (e) => {
             if (e.code === "Space") { e.preventDefault(); announceSystem(segments[index]); }
+            if (e.key.toLowerCase() === "r") { announceSystem(segments[index]); }
             if (e.code === "ArrowRight") { if(index < segments.length-1) { index++; updateUI(); announceSystem(segments[index]); } }
             if (e.code === "ArrowLeft") { if(index > 0) { index--; updateUI(); announceSystem(segments[index]); } }
-            if (e.key.toLowerCase() === "s") { downloadFile(); announceSystem("جاري حفظ التقرير"); }
+            if (e.key.toLowerCase() === "s") { downloadFile(); }
         });
 
-        // معالجة الصوت (للجميع)
         recognition.onresult = (event) => {
             let transcript = "";
             for (let i = event.resultIndex; i < event.results.length; ++i) transcript += event.results[i][0].transcript;
             
             if (transcript.includes("وقف") || transcript.includes("اسكت")) { synth.cancel(); isSystemSpeaking = false; return; }
+            
+            // إضافة أمر "أعد" أو "كرر" صوتياً
+            if (transcript.includes("أعد") || transcript.includes("كرر") || transcript.includes("مرة ثانية")) {
+                announceSystem(segments[index]);
+                return;
+            }
+
             if (isSystemSpeaking) return;
 
             if (event.results[event.results.length - 1].isFinal) {
@@ -270,16 +290,15 @@
         function saveAnswer(ans) {
             results.push({ q: segments[index], a: ans });
             const item = document.createElement('div');
-            item.className = 'log-card';
+            item.style = "background:#f1f3f4; padding:15px; border-radius:12px; margin-bottom:10px; border-right:6px solid var(--secondary);";
             item.innerHTML = `<b>سؤال:</b> ${segments[index]}<br><b>إجابة:</b> ${ans}`;
             document.getElementById('log-container').prepend(item);
-            document.getElementById('status').innerText = "تم تسجيل الإجابة ✅";
         }
 
         function downloadFile() {
-            let content = "تقرير Viva EX التعليمي الشامل\n\n" + results.map(r => `س: ${r.q}\nج: ${r.a}\n---`).join("\n");
+            let content = "تقرير Viva EX\n\n" + results.map(r => `س: ${r.q}\nج: ${r.a}\n---`).join("\n");
             const blob = new Blob([content], { type: 'text/plain' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "viva_report.txt"; a.click();
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "report.txt"; a.click();
         }
 
         recognition.onend = () => recognition.start();
